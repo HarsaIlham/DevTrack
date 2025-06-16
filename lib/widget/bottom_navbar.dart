@@ -15,13 +15,13 @@ class Navbar extends StatelessWidget {
   return Container(
     padding: const EdgeInsets.all(4),
     decoration: BoxDecoration(
-      color: isActive ? const Color.fromRGBO(134, 182, 246, 0.3) : Colors.transparent,
+      color: isActive ? const Color.fromRGBO(134, 182, 246, 0.8) : Colors.transparent,
       shape: BoxShape.rectangle,
       borderRadius: BorderRadius.circular(15),
     ),
     child: Image.asset(
       imagePath,
-      color: isActive ? const Color.fromRGBO(134, 182, 246, 1) : Colors.grey,
+      color: isActive ? Colors.white : Colors.grey,
       width: 36,
       height: 36,
     ),
@@ -77,7 +77,7 @@ class Navbar extends StatelessWidget {
             ),
           ],
           unselectedItemColor: Colors.grey,
-          backgroundColor: Color.fromRGBO(217, 217, 217, 1),
+          backgroundColor: Colors.black,
           type: BottomNavigationBarType.fixed,
           showSelectedLabels: false,
           showUnselectedLabels: false,

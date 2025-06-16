@@ -10,22 +10,23 @@ import 'package:provider/provider.dart';
 import 'package:tracedev/controller/project_controller.dart';
 import 'package:tracedev/widget/show_snackbar.dart';
 
-class TambahProjek extends StatefulWidget {
-  const TambahProjek({super.key});
-  static const routeName = '/tambah-projek';
+class EditProyek extends StatefulWidget {
+  const EditProyek({super.key, required this.idProject});
+  final int idProject;
 
   @override
-  State<TambahProjek> createState() => _TambahProjekState();
+  State<EditProyek> createState() => _EditProyekState();
 }
 
-class _TambahProjekState extends State<TambahProjek> {
+class _EditProyekState extends State<EditProyek> {
   final _formKey = GlobalKey<FormState>();
   late ProjectController _projectController;
   final MapController _mapController = MapController();
   File? _image;
+  String? _imageUrl;
   LatLng? selectedLocation;
   bool _isLoading = false;
-
+  String lokasi = '';
   // Responsive breakpoints
   static const double mobileBreakpoint = 600;
   static const double tabletBreakpoint = 900;
@@ -34,13 +35,38 @@ class _TambahProjekState extends State<TambahProjek> {
   void initState() {
     super.initState();
     _projectController = ProjectController();
-    _pickLocation();
+    _showData();
   }
 
   @override
   void dispose() {
     _projectController.dispose();
     super.dispose();
+  }
+
+  Future<void> _showData() async {
+    _isLoading = true;
+    await _projectController.getProjectById(widget.idProject);
+    setState(() {
+      _isLoading = false;
+      _image = null;
+      selectedLocation = null;
+      _projectController.clearForm();
+      _projectController.lokasiController.text =
+          _projectController.project!.lokasi;
+      _projectController.statusController.text =
+          _projectController.project!.status;
+      _projectController.namaProjectController.text =
+          _projectController.project!.namaProject;
+      _projectController.setDeadline(_projectController.project!.deadline);
+      lokasi = _projectController.project!.lokasi;
+      _imageUrl = _projectController.project!.foto;
+
+      selectedLocation = LatLng(
+        double.parse(_projectController.project!.lokasi.split(',')[0].trim()),
+        double.parse(_projectController.project!.lokasi.split(',')[1].trim()),
+      );
+    });
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -119,16 +145,6 @@ class _TambahProjekState extends State<TambahProjek> {
         await openAppSettings();
         return;
       } else {
-        Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
-
-        setState(() {
-          selectedLocation = LatLng(position.latitude, position.longitude);
-          _projectController.lokasiController.text =
-              '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}';
-        });
-
         _mapController.move(selectedLocation!, 15.0);
       }
     } catch (e) {
@@ -147,10 +163,17 @@ class _TambahProjekState extends State<TambahProjek> {
         return;
       }
 
-      await _projectController.createProject(_image);
+      if (_image == null) {
+        _imageUrl = _projectController.project!.foto;
+      }
 
-      if (_projectController.isSuccess) {
-        ShowSnackbar.show(context, 'Proyek berhasil ditambahkan!');
+      bool _result = await _projectController.updateProject(
+        widget.idProject,
+        _image, _imageUrl!,
+      );
+
+      if (_result) {
+        ShowSnackbar.show(context, 'Proyek berhasil diupdate!');
         _projectController.clearForm();
         setState(() {
           _image = null;
@@ -185,12 +208,14 @@ class _TambahProjekState extends State<TambahProjek> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= mobileBreakpoint;
 
+    if (_isLoading)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     return ChangeNotifierProvider.value(
       value: _projectController,
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
-            'Tambah Proyek',
+            'Edit Proyek',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 20,
@@ -288,7 +313,7 @@ class _TambahProjekState extends State<TambahProjek> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      controller.errorMessage!,
+                                      controller.errorMessage ?? '',
                                       style: TextStyle(
                                         color: Colors.red.shade700,
                                       ),
@@ -298,7 +323,58 @@ class _TambahProjekState extends State<TambahProjek> {
                               ),
                             ),
 
-                          _buildSubmitButton(controller),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed:
+                                  controller.isLoading ? null : _onSubmit,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color.fromRGBO(
+                                  36,
+                                  158,
+                                  192,
+                                  1,
+                                ),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                                shadowColor: const Color.fromRGBO(
+                                  36,
+                                  158,
+                                  192,
+                                  0.3,
+                                ),
+                              ),
+                              child:
+                                  controller.isLoading
+                                      ? const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          SizedBox(width: 12),
+                                          Text('Menyimpan...'),
+                                        ],
+                                      )
+                                      : const Text(
+                                        'Update Proyek',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -575,8 +651,8 @@ class _TambahProjekState extends State<TambahProjek> {
             decoration: BoxDecoration(
               border: Border.all(
                 color:
-                    _image != null
-                        ? const Color.fromRGBO(36, 158, 192, 1)
+                    _image != null || _imageUrl != null
+                        ? const Color.fromARGB(255, 36, 176, 192)
                         : Colors.grey.shade300,
                 width: 2,
               ),
@@ -594,38 +670,9 @@ class _TambahProjekState extends State<TambahProjek> {
               borderRadius: BorderRadius.circular(10),
               child:
                   _image != null
-                      ? Stack(
-                        children: [
-                          Image.file(
-                            _image!,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.6),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _image = null;
-                                  });
-                                },
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
+                      ? _buildImagePreview(Image.file(_image!).image, true)
+                      : (_imageUrl != null && _imageUrl!.isNotEmpty)
+                      ? _buildImagePreview(NetworkImage(_imageUrl!), false)
                       : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -651,43 +698,39 @@ class _TambahProjekState extends State<TambahProjek> {
     );
   }
 
-  Widget _buildSubmitButton(ProjectController controller) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: controller.isLoading ? null : _onSubmit,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color.fromRGBO(36, 158, 192, 1),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+  Widget _buildImagePreview(ImageProvider imageProvider, bool showRemove) {
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            image: DecorationImage(
+              image: imageProvider,
+              fit: BoxFit.cover,
+              scale: 1.0,
+            ),
           ),
-          elevation: 2,
-          shadowColor: const Color.fromRGBO(36, 158, 192, 0.3),
         ),
-        child:
-            controller.isLoading
-                ? const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Text('Menyimpan...'),
-                  ],
-                )
-                : const Text(
-                  'Tambah Proyek',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-      ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: IconButton(
+              onPressed: () {
+                setState(() {
+                  _image = null;
+                  _imageUrl = null;
+                });
+              },
+              icon: const Icon(Icons.close, color: Colors.white, size: 20),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

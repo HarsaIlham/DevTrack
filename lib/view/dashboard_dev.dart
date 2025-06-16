@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
 import 'package:tracedev/controller/project_controller.dart';
+import 'package:tracedev/view/edit_proyek.dart';
 import 'package:tracedev/view/tambah_projek.dart';
+import 'package:tracedev/view/tugaskan_mandor.dart';
 import 'package:tracedev/widget/detail_proyek.dart';
 import 'package:intl/intl.dart';
 
@@ -17,13 +19,13 @@ class _DashboardDevState extends State<DashboardDev> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final projectController = Provider.of<ProjectController>(
-        context,
-        listen: false,
-      );
-      projectController.getAllProjects();
-    });
+    Future.microtask(
+      () =>
+          Provider.of<ProjectController>(
+            context,
+            listen: false,
+          ).getAllProjects(),
+    );
   }
 
   Future<String> getCityFromStringCoords(String koordinat) async {
@@ -75,35 +77,81 @@ class _DashboardDevState extends State<DashboardDev> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ElevatedButton.icon(
-                onPressed: () async {
-                  await Navigator.pushNamed(context, TambahProjek.routeName);
-                  await Provider.of<ProjectController>(
-                    context,
-                    listen: false,
-                  ).getAllProjects();
-                },
-                icon: Icon(Icons.add, color: Colors.white),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color.fromRGBO(134, 182, 246, 1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color.fromRGBO(134, 182, 246, 1),
+                      Color.fromRGBO(99, 162, 231, 1),
+                    ],
                   ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color.fromRGBO(134, 182, 246, 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                label: Text(
-                  'Tambah Proyek',
-                  style: TextStyle(color: Colors.white, fontSize: 20),
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    await Navigator.pushNamed(context, TambahProjek.routeName);
+                    await Provider.of<ProjectController>(
+                      context,
+                      listen: false,
+                    ).getAllProjects();
+                  },
+                  icon: const Icon(
+                    Icons.add_circle_outline,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  label: const Text(
+                    'Tambah Proyek',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 16),
-                child: Text(
-                  'Proyek yang Sedang Berjalan',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 20,
-                    color: Colors.black,
-                  ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color.fromRGBO(36, 158, 192, 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.construction,
+                        color: Color.fromRGBO(36, 158, 192, 1),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Proyek yang sedang berjalan',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               SizedBox(height: 16),
@@ -124,14 +172,17 @@ class _DashboardDevState extends State<DashboardDev> {
                       return ListView.builder(
                         itemCount: projectController.projects.length,
                         itemBuilder: (context, index) {
+                          final project = projectController.projects[index];
                           return GestureDetector(
                             onTap: () async {
-                              final project = projectController.projects[index];
-                              final kecamatan = await getCityFromStringCoords(project.lokasi);
+                              final kecamatan = await getCityFromStringCoords(
+                                project.lokasi,
+                              );
                               showDialog(
                                 context: context,
                                 builder:
                                     (_) => DetailProyek(
+                                      id: project.projectId!,
                                       title: project.namaProject,
                                       lokasi: kecamatan,
                                       status: project.status,
@@ -182,9 +233,7 @@ class _DashboardDevState extends State<DashboardDev> {
                                               12,
                                             ),
                                             child: Image.network(
-                                              projectController
-                                                      .projects[index]
-                                                      .foto ??
+                                              project.foto ??
                                                   '',
                                               fit: BoxFit.cover,
                                               errorBuilder: (
@@ -235,9 +284,7 @@ class _DashboardDevState extends State<DashboardDev> {
                                             children: [
                                               // Nama proyek
                                               Text(
-                                                projectController
-                                                    .projects[index]
-                                                    .namaProject,
+                                                project.namaProject,
                                                 style: TextStyle(
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.bold,
@@ -259,7 +306,7 @@ class _DashboardDevState extends State<DashboardDev> {
                                                   FutureBuilder<String>(
                                                     future:
                                                         getCityFromStringCoords(
-                                                          "-8.166077, 113.710357",
+                                                          project.lokasi,
                                                         ),
                                                     builder: (
                                                       context,
@@ -315,9 +362,7 @@ class _DashboardDevState extends State<DashboardDev> {
                                                       ),
                                                     ),
                                                     child: Text(
-                                                      projectController
-                                                          .projects[index]
-                                                          .status,
+                                                      project.status,
                                                       style: TextStyle(
                                                         fontSize: 12,
                                                         color:
@@ -359,9 +404,7 @@ class _DashboardDevState extends State<DashboardDev> {
                                                         SizedBox(width: 4),
                                                         Text(
                                                           formatTanggal(
-                                                            projectController
-                                                                .projects[index]
-                                                                .deadline,
+                                                            project.deadline,
                                                           ),
                                                           style: TextStyle(
                                                             fontSize: 12,
@@ -400,15 +443,31 @@ class _DashboardDevState extends State<DashboardDev> {
                                                     BorderRadius.circular(8),
                                               ),
                                               child: IconButton(
-                                                onPressed: () {
-                                                  // Aksi edit
+                                                onPressed: () async {
+                                                  await Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder:
+                                                          (
+                                                            context,
+                                                          ) => EditProyek(
+                                                            idProject:
+                                                                project.projectId!,
+                                                          ),
+                                                    ),
+                                                  );
+                                                  await Provider.of<
+                                                    ProjectController
+                                                  >(
+                                                    context,
+                                                    listen: false,
+                                                  ).getAllProjects();
                                                 },
                                                 icon: Icon(
                                                   Icons.edit,
                                                   color: Colors.amber[700],
                                                   size: 20,
                                                 ),
-                                                tooltip: 'Edit Proyek',
                                                 padding: EdgeInsets.all(8),
                                                 constraints: BoxConstraints(
                                                   minWidth: 40,
@@ -436,7 +495,6 @@ class _DashboardDevState extends State<DashboardDev> {
                                                   color: Colors.red[700],
                                                   size: 20,
                                                 ),
-                                                tooltip: 'Hapus Proyek',
                                                 padding: EdgeInsets.all(8),
                                                 constraints: BoxConstraints(
                                                   minWidth: 40,
@@ -445,6 +503,69 @@ class _DashboardDevState extends State<DashboardDev> {
                                               ),
                                             ),
                                           ],
+                                        ),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Color.fromRGBO(
+                                                  36,
+                                                  158,
+                                                  192,
+                                                  1,
+                                                ).withAlpha(100),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 3),
+                                              ),
+                                            ],
+                                          ),
+                                          child: ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Color.fromRGBO(
+                                                36,
+                                                158,
+                                                192,
+                                                1,
+                                              ),
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 12,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              elevation: 0,
+                                            ),
+                                            onPressed:
+                                                () =>
+                                                    Navigator.of(context).push(
+                                                      MaterialPageRoute(
+                                                        builder:
+                                                            (context) =>
+                                                                TugaskanMandor(
+                                                                  idProject: project.projectId!, projectName: project.namaProject,
+                                                                ),
+                                                      ),
+                                                    ),
+                                            icon: Icon(
+                                              Icons.person,
+                                              size: 18,
+                                              color: Colors.white,
+                                            ),
+                                            label: Text(
+                                              'Tugaskan Mandor',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     ),

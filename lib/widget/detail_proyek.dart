@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:tracedev/controller/project_controller.dart';
+import 'package:tracedev/view/edit_proyek.dart';
+import 'package:tracedev/view/tugaskan_mandor.dart';
 
 class DetailProyek extends StatelessWidget {
+  final int id;
   final String title;
   final String lokasi;
   final String status;
@@ -10,6 +15,7 @@ class DetailProyek extends StatelessWidget {
 
   const DetailProyek({
     super.key,
+    required this.id,
     required this.title,
     required this.lokasi,
     required this.status,
@@ -20,6 +26,7 @@ class DetailProyek extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    int id = this.id;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 8,
@@ -50,7 +57,7 @@ class DetailProyek extends StatelessWidget {
                       icon: Icons.person_4_rounded,
                       label: 'Jumlah Mandor',
                       value: jumlahMandor,
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -116,7 +123,7 @@ class DetailProyek extends StatelessWidget {
 
   Widget _buildStatusBadge() {
     Color badgeColor =
-        status.toLowerCase() == 'berjalan' ? Colors.green : Colors.red;
+        status.toLowerCase() == 'Sedang Berjalan' ? Colors.green : Colors.red;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -207,7 +214,16 @@ class DetailProyek extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => EditProyek(idProject: id,)),
+                );
+                await Provider.of<ProjectController>(
+                    context,
+                    listen: false,
+                  ).getAllProjects();
+              },
               style: ElevatedButton.styleFrom(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 backgroundColor: Color.fromRGBO(249, 175, 1, 1),
@@ -221,6 +237,26 @@ class DetailProyek extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => TugaskanMandor(idProject: id, projectName: title,)),
+              ),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                backgroundColor: Color.fromRGBO(36, 158, 192, 1),
+              ),
+              child: Text(
+                'Mandor',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            )
           ),
           SizedBox(width: 12),
           OutlinedButton(

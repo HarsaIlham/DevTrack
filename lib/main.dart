@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tracedev/controller/mandor_project_controller.dart';
+import 'package:tracedev/controller/mandor_project_project_controller.dart';
 import 'package:tracedev/controller/project_controller.dart';
+import 'package:tracedev/controller/users_controller.dart';
+import 'package:tracedev/view/dashboard_dev.dart';
+import 'package:tracedev/view/login_screen.dart';
 import 'package:tracedev/view/main_page.dart';
 import 'package:tracedev/view/tambah_mandor.dart';
 import 'package:tracedev/view/tambah_projek.dart';
@@ -11,6 +16,9 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ProjectController()),
+        ChangeNotifierProvider(create: (_) => UsersController()),
+        ChangeNotifierProvider(create: (_) => MandorProjectController()),
+        ChangeNotifierProvider(create: (_) => MandorProjectProjectController()),
         // Tambah provider lain jika perlu
       ],
       child: MyApp(),
