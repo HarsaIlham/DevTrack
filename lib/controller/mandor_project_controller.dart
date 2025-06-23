@@ -8,6 +8,9 @@ class MandorProjectController extends ChangeNotifier {
   List<MandorProject> _mandorsProject = [];
   List<MandorProject> get mandorsProject => _mandorsProject;
 
+  MandorProject? _mandorProject;
+  MandorProject? get mandorProject => _mandorProject;
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -22,6 +25,22 @@ class MandorProjectController extends ChangeNotifier {
     try {
       _mandorsProject = await _apiServices.getAllMandorProject();
       print('[getAllMandorProject] API call successful.');
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> getMandorProjectById(int id) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _mandorProject = await _apiServices.getMandorProjectById(id);
+      print('[getMandorProjectById] API call successful.');
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {

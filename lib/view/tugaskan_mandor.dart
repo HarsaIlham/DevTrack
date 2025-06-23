@@ -33,6 +33,8 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
   Map<int, MandorProject> _mandorProjects = {};
   int _selectedMandorId = 0;
   bool? isWorkingFilter;
+  bool _isLoading = false;
+  bool _isAssigning = false; // Tambahan untuk loading saat assign
 
   @override
   void initState() {
@@ -49,12 +51,32 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
   }
 
   Future<void> _loadMandors() async {
-    await Future.delayed(const Duration(seconds: 1));
-    await _mandorProjectController.getAllMandorProject();
+    if (_isLoading) return;
+
     setState(() {
-      originalData = _mandorProjectController.mandorsProject;
-      filteredData = List.from(originalData);
+      _isLoading = true;
     });
+
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      await _mandorProjectController.getAllMandorProject();
+
+      if (mounted) {
+        setState(() {
+          originalData = _mandorProjectController.mandorsProject;
+          filteredData = List.from(originalData);
+          _isLoading = false;
+        });
+        _applyFilters();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        print('Error loading mandors: $e');
+      }
+    }
   }
 
   void filterByWorkingStatus(bool? isWorking) {
@@ -71,13 +93,11 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
   void _applyFilters() {
     List<MandorProject> tempData = List.from(originalData);
 
-    // Filter berdasarkan isWorking
     if (isWorkingFilter != null) {
       tempData =
           tempData.where((item) => item.isWorking == isWorkingFilter).toList();
     }
 
-    // Search berdasarkan nama dan alamat
     String searchTerm = _searchController.text.toLowerCase().trim();
     if (searchTerm.isNotEmpty) {
       tempData =
@@ -93,12 +113,14 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
     });
   }
 
-  void resetFilters() {
+  Future<void> resetFilters() async {
     setState(() {
       isWorkingFilter = null;
-      _searchController.clear();
-      filteredData = List.from(originalData);
+      _selectedMandorId = 0;
     });
+
+    _searchController.clear();
+    await _loadMandors(); // Reload data fresh
   }
 
   void _selectMandor(int mandorId) {
@@ -110,7 +132,7 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
   void _assignMandor() {
     if (_selectedMandorId != 0) {
       MandorProject? selectedMandor = originalData.firstWhere(
-        (mandor) => mandor.userId == _selectedMandorId,
+        (mandor) => mandor.mandorProyekId == _selectedMandorId,
       );
       showDialog(
         context: context,
@@ -121,10 +143,71 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
               name: selectedMandor.users!.nama,
               foto: selectedMandor.users!.foto,
               onConfirm: () async {
-                await _mandorProjectProjectController.tugaskanMandor(_selectedMandorId, widget.idProject);
-                await _loadMandors();
-                ShowSnackbar.show(context, 'Mandor berhasil ditugaskan!');
-                Navigator.pop(context);
+                try {
+                  setState(() {
+                    _isAssigning = true;
+                  });
+
+                  await _mandorProjectProjectController.tugaskanMandor(
+                    _selectedMandorId,
+                    widget.idProject,
+                  );
+
+                  if (_mandorProjectProjectController.isSuccess) {
+                    if (mounted) {
+                      Navigator.pop(context);
+                      setState(() {
+                        _selectedMandorId = 0;
+                        _isAssigning = false;
+                      });
+
+                      // ✅ PERBAIKAN: Panggil resetFilters() dengan tanda kurung
+                      await resetFilters(); // Refresh data setelah berhasil assign
+
+                      if (mounted) {
+                        ShowSnackbar.show(
+                          context,
+                          'Mandor berhasil ditugaskan!',
+                          true,
+                        );
+                      }
+                    }
+                  } else if (_mandorProjectProjectController.errorMessage !=
+                      null) {
+                    if (mounted) {
+                      setState(() {
+                        _isAssigning = false;
+                      });
+                      ShowSnackbar.show(
+                        context,
+                        _mandorProjectProjectController.errorMessage!,
+                        false,
+                      );
+                    }
+                  } else {
+                    if (mounted) {
+                      setState(() {
+                        _isAssigning = false;
+                      });
+                      ShowSnackbar.show(
+                        context,
+                        'Gagal menugaskan mandor',
+                        false,
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    setState(() {
+                      _isAssigning = false;
+                    });
+                    ShowSnackbar.show(
+                      context,
+                      'Terjadi kesalahan saat menugaskan mandor',
+                      false,
+                    );
+                  }
+                }
               },
             ),
       );
@@ -151,22 +234,31 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
         backgroundColor: Color.fromRGBO(36, 158, 192, 1),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: Colors.white),
-            onPressed: resetFilters,
+            icon:
+                _isLoading
+                    ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                    : Icon(Icons.refresh, color: Colors.white),
+            onPressed: _isLoading ? null : resetFilters,
           ),
         ],
       ),
       body: Column(
         children: [
-          // Header Section
           Container(
             color: Colors.white,
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Search Bar
                 TextField(
                   controller: _searchController,
+                  enabled: !_isLoading,
                   decoration: InputDecoration(
                     hintText: 'Cari mandor berdasarkan nama, atau alamat...',
                     prefixIcon: const Icon(Icons.search, color: Colors.grey),
@@ -184,7 +276,6 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
                 ),
                 const SizedBox(height: 16),
 
-                // Filter Chips
                 SizedBox(
                   height: 40,
                   child: ListView(
@@ -194,19 +285,28 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
                       FilterChip(
                         label: Text('Semua'),
                         selected: isWorkingFilter == null,
-                        onSelected: (selected) => filterByWorkingStatus(null),
+                        onSelected:
+                            _isLoading
+                                ? null
+                                : (selected) => filterByWorkingStatus(null),
                       ),
                       SizedBox(width: 8),
                       FilterChip(
                         label: Text('Tersedia'),
                         selected: isWorkingFilter == false,
-                        onSelected: (selected) => filterByWorkingStatus(false),
+                        onSelected:
+                            _isLoading
+                                ? null
+                                : (selected) => filterByWorkingStatus(false),
                       ),
                       SizedBox(width: 8),
                       FilterChip(
                         label: Text('Sibuk'),
                         selected: isWorkingFilter == true,
-                        onSelected: (selected) => filterByWorkingStatus(true),
+                        onSelected:
+                            _isLoading
+                                ? null
+                                : (selected) => filterByWorkingStatus(true),
                       ),
                     ],
                   ),
@@ -216,15 +316,36 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
           ),
 
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: filteredData.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                MandorProject mandorProject = filteredData[index];
-                return _buildMandorCard(mandorProject);
-              },
-            ),
+            child:
+                _isLoading && originalData.isEmpty
+                    ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text(
+                            'Memuat data mandor...',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    : filteredData.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filteredData.length,
+                      separatorBuilder:
+                          (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        MandorProject mandorProject = filteredData[index];
+                        return _buildMandorCard(mandorProject);
+                      },
+                    ),
           ),
         ],
       ),
@@ -244,7 +365,8 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
                 ),
                 child: SafeArea(
                   child: ElevatedButton(
-                    onPressed: _assignMandor,
+                    onPressed:
+                        (_isLoading || _isAssigning) ? null : _assignMandor,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[600],
                       foregroundColor: Colors.white,
@@ -253,13 +375,38 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'Tugaskan Mandor',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child:
+                        _isAssigning
+                            ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Menugaskan...',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            )
+                            : const Text(
+                              'Tugaskan Mandor',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                   ),
                 ),
               )
@@ -267,36 +414,15 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
     );
   }
 
-  // Widget _buildFilterChip(String label) {
-  //   bool isSelected = _selectedFilter == label;
-  //   return Padding(
-  //     padding: const EdgeInsets.only(right: 8),
-  //     child: FilterChip(
-  //       label: Text(label),
-  //       selected: isSelected,
-  //       onSelected: (selected) {
-  //         setState(() {
-  //           _selectedFilter = label;
-  //         });
-  //         _filterMandors();
-  //       },
-  //       backgroundColor: Colors.grey[100],
-  //       selectedColor: Colors.blue[100],
-  //       checkmarkColor: Colors.blue[600],
-  //       labelStyle: TextStyle(
-  //         color: isSelected ? Colors.blue[600] : Colors.grey[700],
-  //         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-  //       ),
-  //     ),
-  //   );
-  // }
-
   Widget _buildMandorCard(MandorProject mandor) {
-    bool isSelected = _selectedMandorId == mandor.userId;
+    bool isSelected = _selectedMandorId == mandor.mandorProyekId;
     bool isAvailable = mandor.isWorking == false;
 
     return GestureDetector(
-      onTap: isAvailable ? () => _selectMandor(mandor.userId!) : null,
+      onTap:
+          (isAvailable && !_isLoading && !_isAssigning)
+              ? () => _selectMandor(mandor.mandorProyekId!)
+              : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
@@ -322,7 +448,6 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
                 children: [
                   Row(
                     children: [
-                      // Avatar
                       Container(
                         width: 60,
                         height: 60,
@@ -349,7 +474,6 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
                       ),
                       const SizedBox(width: 16),
 
-                      // Info
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,11 +561,9 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Stats
                   if (mandor != null)
                     Row(
                       children: [
-                        _buildStatItem(Icons.star, '5', Colors.orange),
                         _buildStatItem(Icons.work, '100 proyek', Colors.blue),
                         _buildStatItem(
                           Icons.schedule,
@@ -450,40 +572,34 @@ class _TugaskanMandorState extends State<TugaskanMandor> {
                         ),
                       ],
                     ),
-
-                  // Selection Indicator
-                  if (isSelected)
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: Colors.blue[600],
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                      ),
-                    ),
-
-                  // Unavailable Overlay
-                  if (!isAvailable)
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
+
+            if (isSelected)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.blue[600],
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check, color: Colors.white, size: 16),
+                ),
+              ),
+
+            if (!isAvailable || _isLoading || _isAssigning)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

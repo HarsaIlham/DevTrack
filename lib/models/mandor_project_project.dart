@@ -6,14 +6,14 @@ class MandorProjectProject {
   final int mandorProyekId;
   final int projectId;
   final MandorProject? mandorProject;
-  final ProjectModel? projectModel;
+  final ProjectModel? project;
 
   MandorProjectProject({
     this.id,
     required this.mandorProyekId,
     required this.projectId,
-    required this.mandorProject,
-    required this.projectModel,
+    this.mandorProject,
+    this.project,
   });
 
   factory MandorProjectProject.fromJson(Map<String, dynamic> json) {
@@ -24,7 +24,7 @@ class MandorProjectProject {
       mandorProject: json['mandorProject'] != null
           ? MandorProject.fromJson(json['mandorProject'])
           : null,
-      projectModel: json['project'] != null
+      project: json['project'] != null
           ? ProjectModel.fromJson(json['project'])
           : null,
     );

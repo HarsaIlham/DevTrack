@@ -38,12 +38,18 @@ class ProjectModel {
   }
 
   Map<String, dynamic> toCreateJson() {
-  return {
-    'NamaProject': namaProject,
-    'Lokasi': lokasi,
-    'Deadline': deadline.toUtc().toIso8601String(),
-    'Status': status,
-    'Foto': foto,
-  };
-}
+    final deadlineAtNoon = DateTime(
+      deadline.year,
+      deadline.month,
+      deadline.day,
+      12,
+    );
+    return {
+      'NamaProject': namaProject,
+      'Lokasi': lokasi,
+      'Deadline': deadlineAtNoon.toUtc().toIso8601String(),
+      'Status': status,
+      'Foto': foto,
+    };
+  }
 }

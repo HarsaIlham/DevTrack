@@ -71,7 +71,7 @@ class _TambahProjekState extends State<TambahProjek> {
       final status2 = await Permission.photos.request();
 
       if (status.isDenied && status2.isDenied) {
-        ShowSnackbar.show(context, 'Izin penyimpanan ditolak.');
+        ShowSnackbar.show(context, 'Izin penyimpanan ditolak.', false);
       }
 
       final XFile? pickedFile = await ImagePicker().pickImage(
@@ -87,7 +87,7 @@ class _TambahProjekState extends State<TambahProjek> {
         });
       }
     } catch (e) {
-      ShowSnackbar.show(context, 'Gagal memilih gambar: $e');
+      ShowSnackbar.show(context, 'Gagal memilih gambar: $e', false);
     }
   }
 
@@ -99,14 +99,14 @@ class _TambahProjekState extends State<TambahProjek> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        ShowSnackbar.show(context, 'Layanan lokasi tidak aktif.');
+        ShowSnackbar.show(context, 'Layanan lokasi tidak aktif.', false);
         return;
       }
       PermissionStatus permissionStatus = await Permission.location.status;
       if (permissionStatus.isDenied) {
         permissionStatus = await Permission.location.request();
         if (permissionStatus.isDenied) {
-          ShowSnackbar.show(context, 'Izin lokasi ditolak.');
+          ShowSnackbar.show(context, 'Izin lokasi ditolak.', false);
           return;
         }
       }
@@ -114,7 +114,7 @@ class _TambahProjekState extends State<TambahProjek> {
       if (permissionStatus.isPermanentlyDenied) {
         ShowSnackbar.show(
           context,
-          'Izin lokasi ditolak secara permanen. Silakan aktifkan di pengaturan.',
+          'Izin lokasi ditolak secara permanen. Silakan aktifkan di pengaturan.', false
         );
         await openAppSettings();
         return;
@@ -132,7 +132,7 @@ class _TambahProjekState extends State<TambahProjek> {
         _mapController.move(selectedLocation!, 15.0);
       }
     } catch (e) {
-      ShowSnackbar.show(context, 'Gagal mendapatkan lokasi: $e');
+      ShowSnackbar.show(context, 'Gagal mendapatkan lokasi: $e', false);
     } finally {
       setState(() {
         _isLoading = false;
@@ -143,14 +143,14 @@ class _TambahProjekState extends State<TambahProjek> {
   void _onSubmit() async {
     if (_formKey.currentState!.validate()) {
       if (selectedLocation == null) {
-        ShowSnackbar.show(context, 'Silakan pilih lokasi terlebih dahulu');
+        ShowSnackbar.show(context, 'Silakan pilih lokasi terlebih dahulu', false);
         return;
       }
 
       await _projectController.createProject(_image);
 
       if (_projectController.isSuccess) {
-        ShowSnackbar.show(context, 'Proyek berhasil ditambahkan!');
+        ShowSnackbar.show(context, 'Proyek berhasil ditambahkan!', true);
         _projectController.clearForm();
         setState(() {
           _image = null;
@@ -391,7 +391,7 @@ class _TambahProjekState extends State<TambahProjek> {
               ? _projectController.statusController.text
               : null,
       items:
-          ['Belum Mulai', 'Sedang Berjalan', 'Selesai']
+          ['Belum Mulai']
               .map(
                 (status) =>
                     DropdownMenuItem(value: status, child: Text(status)),

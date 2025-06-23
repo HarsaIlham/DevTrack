@@ -12,14 +12,27 @@ class AkunMandor extends StatefulWidget {
   State<AkunMandor> createState() => _AkunMandorState();
 }
 
-class _AkunMandorState extends State<AkunMandor> {
+class _AkunMandorState extends State<AkunMandor> 
+with TickerProviderStateMixin {
   final _userController = UsersController();
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _animationController.forward();
+
     Future.microtask(
-      () => Provider.of<UsersController>(context, listen: false).getAllMandors(),
+      () =>
+          Provider.of<UsersController>(context, listen: false).getAllMandors(),
     );
   }
 
@@ -29,417 +42,501 @@ class _AkunMandorState extends State<AkunMandor> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
+        elevation: 0,
+        backgroundColor: const Color(0xFF249EC0),
         title: const Text(
           'Akun Mandor',
           style: TextStyle(
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.bold,
             fontSize: 20,
             color: Colors.white,
           ),
         ),
+        automaticallyImplyLeading: false,
         centerTitle: true,
-        backgroundColor: const Color.fromRGBO(36, 158, 192, 1),
-        elevation: 0,
-        shadowColor: Colors.transparent,
       ),
-      body: Container(
-        width: widthApp,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.grey[50]!, Colors.white],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color.fromRGBO(134, 182, 246, 1),
-                      Color.fromRGBO(99, 162, 231, 1),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color.fromRGBO(134, 182, 246, 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    await Navigator.pushNamed(context, TambahMandor.routeName);
-                    await Provider.of<UsersController>(
-                      context,
-                      listen: false,
-                    ).getAllMandors();
-                  },
-                  icon: const Icon(
-                    Icons.add_circle_outline,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Consumer<UsersController>(
+          builder: (context, controller, child) {
+            // Hitung statistik
+            final totalMandor = controller.users.length;
+            final mandorAktif =
+                controller.users.where((user) => user.isActive).length;
+            final mandorNonaktif = totalMandor - mandorAktif;
+
+            return Column(
+              children: [
+                // Header with stats
+                Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF249EC0),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
                     ),
                   ),
-                  label: const Text(
-                    'Tambah Akun Mandor',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color.fromRGBO(36, 158, 192, 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.group,
-                      color: Color.fromRGBO(36, 158, 192, 1),
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Daftar Akun Mandor',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 22,
-                      color: Color.fromRGBO(51, 51, 51, 1),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              Expanded(
-                child: Consumer<UsersController>(
-                  builder: (context, controller, child) {
-                    if (controller.isLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else if (controller.errorMessage != null) {
-                      return Center(child: Text(controller.errorMessage!));
-                    } else if (controller.users.isEmpty) {
-                      return const Center(child: Text('Tidak ada akun mandor'));
-                    }
-                    return ListView.builder(
-                      itemCount: controller.users.length,
-                      itemBuilder: (context, index) {
-                        final user = controller.users[index];
-                        return AnimatedContainer(
-                          duration: Duration(milliseconds: 300 + (index * 50)),
-                          margin: const EdgeInsets.only(bottom: 16),
-                          child: Card(
-                            elevation: 4,
-                            shadowColor: Colors.grey.withOpacity(0.2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [Colors.white, Colors.grey[50]!],
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.all(20),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 64,
-                                          height: 64,
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            child: Center(
-                                              child: Image.network(
-                                                user.foto ?? '',
-                                                width: 64,
-                                                height: 64,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (
-                                                  context,
-                                                  error,
-                                                  stackTrace,
-                                                ) {
-                                                  return Container(
-                                                    color: Colors.grey[100],
-                                                    child: Icon(
-                                                      Icons.person,
-                                                      color: Colors.grey[400],
-                                                      size: 32,
-                                                    ),
-                                                  );
-                                                },
-                                                loadingBuilder: (
-                                                  context,
-                                                  child,
-                                                  loadingProgress,
-                                                ) {
-                                                  if (loadingProgress == null)
-                                                    return child;
-                                                  return Container(
-                                                    color: Colors.grey[100],
-                                                    child: Center(
-                                                      child: CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                        valueColor:
-                                                            AlwaysStoppedAnimation<
-                                                              Color
-                                                            >(Colors.blue),
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-
-                                        const SizedBox(width: 20),
-
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                user.nama,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 20,
-                                                  color: Color.fromRGBO(
-                                                    51,
-                                                    51,
-                                                    51,
-                                                    1,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 12),
-                                              _buildDetailRow(
-                                                Icons.location_on,
-                                                user.alamat,
-                                              ),
-                                              const SizedBox(height: 8),
-                                              _buildDetailRow(
-                                                Icons.email,
-                                                user.email,
-                                              ),
-                                              const SizedBox(height: 8),
-                                              _buildDetailRow(
-                                                Icons.phone,
-                                                user.noHp,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  Container(
-                                    height: 1,
-                                    margin: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.transparent,
-                                          Colors.grey[300]!,
-                                          Colors.transparent,
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-
-                                  Padding(
-                                    padding: const EdgeInsets.all(20),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                user.isActive
-                                                    ? Colors.green.withOpacity(
-                                                      0.1,
-                                                    )
-                                                    : Colors.red.withOpacity(
-                                                      0.1,
-                                                    ),
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                            border: Border.all(
-                                              color:
-                                                  user.isActive
-                                                      ? Colors.green
-                                                          .withOpacity(0.3)
-                                                      : Colors.red.withOpacity(
-                                                        0.3,
-                                                      ),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Container(
-                                                width: 8,
-                                                height: 8,
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      user.isActive
-                                                          ? Colors.green
-                                                          : Colors.red,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                user.isActive
-                                                    ? 'Aktif'
-                                                    : 'Nonaktif',
-                                                style: TextStyle(
-                                                  color:
-                                                      user.isActive
-                                                          ? Colors.green
-                                                          : Colors.red,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        const Spacer(),
-
-                                        // Tombol aksi dengan design yang lebih modern
-                                        Row(
-                                          children: [
-                                            _buildActionButton(
-                                              icon: Icons.edit,
-                                              color: Colors.orange,
-                                              label: 'Edit',
-                                              onPressed: () async {
-                                                await Navigator.push(context, MaterialPageRoute(builder: (context) => EditMandor(userId: user.userId!),));
-                                                await Provider.of<UsersController>(context, listen: false).getAllMandors();
-                                              },
-                                            ),
-                                            SizedBox(width: 8),
-                                            _buildActionButton(
-                                              icon:
-                                                  user.isActive
-                                                      ? Icons.lock
-                                                      : Icons.check_box_rounded,
-                                              color:
-                                                  user.isActive
-                                                      ? const Color.fromRGBO(
-                                                        239,
-                                                        68,
-                                                        68,
-                                                        1,
-                                                      )
-                                                      : Colors.green,
-                                              label:
-                                                  user.isActive
-                                                      ? 'Nonaktifkan'
-                                                      : 'Aktifkan',
-                                              onPressed: () {
-                                                _showDeleteDialog(
-                                                  context,
-                                                  index,
-                                                  user.userId!,
-                                                  user.isActive,
-                                                  user.nama,
-                                                  user.foto ?? '',
-                                                );
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            'Total Mandor',
+                            totalMandor.toString(),
+                            Icons.group,
+                            Colors.white,
                           ),
-                        );
-                      },
-                    );
-                  },
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: _buildStatCard(
+                            'Aktif',
+                            mandorAktif.toString(),
+                            Icons.check_circle,
+                            Colors.green[100]!,
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: _buildStatCard(
+                            'Nonaktif',
+                            mandorNonaktif.toString(),
+                            Icons.cancel,
+                            Colors.red[100]!,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
+
+                const SizedBox(height: 20),
+
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF249EC0).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.group,
+                                color: Color(0xFF249EC0),
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Daftar Akun Mandor',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 22,
+                                color: Color(0xFF2D3748),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        Expanded(child: _buildMandorList(controller)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await Navigator.pushNamed(context, TambahMandor.routeName);
+          await Provider.of<UsersController>(
+            context,
+            listen: false,
+          ).getAllMandors();
+        },
+        backgroundColor: const Color(0xFF249EC0),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'Tambah Mandor',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: const Color(0xFF249EC0), size: 24),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF249EC0),
+            ),
+          ),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMandorList(UsersController controller) {
+    if (controller.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF249EC0)),
+      );
+    } else if (controller.errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 20),
+            Text(
+              'Terjadi Kesalahan',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              controller.errorMessage!,
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    } else if (controller.users.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.group_off, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 20),
+            Text(
+              'Belum ada akun mandor',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Tambahkan akun mandor pertama Anda',
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: controller.users.length,
+      itemBuilder: (context, index) {
+        final user = controller.users[index];
+        return TweenAnimationBuilder(
+          duration: Duration(milliseconds: 300 + (index * 100)),
+          tween: Tween<double>(begin: 0, end: 1),
+          builder: (context, double value, child) {
+            return Transform.translate(
+              offset: Offset(0, 50 * (1 - value)),
+              child: Opacity(
+                opacity: value,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 5,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  user.foto ?? '',
+                                  width: 64,
+                                  height: 64,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: const Color(
+                                        0xFF249EC0,
+                                      ).withOpacity(0.1),
+                                      child: const Icon(
+                                        Icons.person,
+                                        color: Color(0xFF249EC0),
+                                        size: 32,
+                                      ),
+                                    );
+                                  },
+                                  loadingBuilder: (
+                                    context,
+                                    child,
+                                    loadingProgress,
+                                  ) {
+                                    if (loadingProgress == null) return child;
+                                    return Container(
+                                      color: Colors.grey[100],
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFF249EC0),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(width: 20),
+
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    user.nama,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: Color(0xFF2D3748),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildDetailRow(
+                                    Icons.location_on_outlined,
+                                    user.alamat,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildDetailRow(
+                                    Icons.email_outlined,
+                                    user.email,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildDetailRow(
+                                    Icons.phone_outlined,
+                                    user.noHp,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Container(
+                        height: 1,
+                        margin: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.transparent,
+                              Colors.grey[300]!,
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            _buildStatusBadge(user.isActive),
+                            const Spacer(),
+                            Row(
+                              children: [
+                                _buildActionButton(
+                                  icon: Icons.edit_outlined,
+                                  color: Colors.orange,
+                                  label: 'Edit',
+                                  onPressed: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) => EditMandor(
+                                              userId: user.userId!,
+                                            ),
+                                      ),
+                                    );
+                                    await Provider.of<UsersController>(
+                                      context,
+                                      listen: false,
+                                    ).getAllMandors();
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                                _buildActionButton(
+                                  icon:
+                                      user.isActive
+                                          ? Icons.lock_outlined
+                                          : Icons.check_circle_outline,
+                                  color:
+                                      user.isActive ? Colors.red : Colors.green,
+                                  label:
+                                      user.isActive
+                                          ? 'Nonaktifkan'
+                                          : 'Aktifkan',
+                                  onPressed: () {
+                                    _showDeleteDialog(
+                                      context,
+                                      index,
+                                      user.userId!,
+                                      user.isActive,
+                                      user.nama,
+                                      user.foto ?? '',
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildDetailRow(IconData icon, String text) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
-            size: 16,
-            color: const Color.fromRGBO(36, 158, 192, 1),
-          ),
-        ),
-        const SizedBox(width: 12),
+        Icon(icon, size: 16, color: Colors.grey[600]),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
-              color: Color.fromRGBO(75, 85, 99, 1),
-              fontSize: 15,
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatusBadge(bool isActive) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color:
+            isActive
+                ? Colors.green.withOpacity(0.1)
+                : Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color:
+              isActive
+                  ? Colors.green.withOpacity(0.3)
+                  : Colors.red.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: isActive ? Colors.green : Colors.red,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isActive ? 'Aktif' : 'Nonaktif',
+            style: TextStyle(
+              color: isActive ? Colors.green : Colors.red,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -471,7 +568,7 @@ class _AkunMandorState extends State<AkunMandor> {
           elevation: 0,
         ),
         onPressed: onPressed,
-        icon: Icon(icon, size: 18, color: Colors.white,),
+        icon: Icon(icon, size: 18),
         label: Text(
           label,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -501,15 +598,11 @@ class _AkunMandorState extends State<AkunMandor> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    status
-                        ? Color.fromRGBO(239, 68, 68, 1)
-                        : Color.fromRGBO(36, 192, 72, 1),
-                    status
-                        ? Color.fromRGBO(220, 38, 38, 1)
-                        : Color.fromRGBO(36, 158, 192, 1),
+                    status ? Colors.red : Colors.green,
+                    status ? Colors.red[700]! : const Color(0xFF249EC0),
                   ],
                 ),
-                borderRadius: BorderRadius.only(
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(20),
                   topRight: Radius.circular(20),
                 ),
@@ -530,14 +623,16 @@ class _AkunMandorState extends State<AkunMandor> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    status
-                        ? 'Konfirmasi Nonaktifkan Akun'
-                        : 'Konfirmasi Aktifkan Akun',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                  Expanded(
+                    child: Text(
+                      status
+                          ? 'Konfirmasi Nonaktifkan Akun'
+                          : 'Konfirmasi Aktifkan Akun',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ],
@@ -551,7 +646,7 @@ class _AkunMandorState extends State<AkunMandor> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
+                      color: const Color(0xFF249EC0).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: ClipRRect(
@@ -565,7 +660,7 @@ class _AkunMandorState extends State<AkunMandor> {
                             (context, error, stackTrace) => const Icon(
                               Icons.person,
                               size: 100,
-                              color: Colors.grey,
+                              color: Color(0xFF249EC0),
                             ),
                       ),
                     ),
@@ -578,13 +673,13 @@ class _AkunMandorState extends State<AkunMandor> {
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 16,
-                      color: Color.fromRGBO(51, 51, 51, 1),
+                      color: Color(0xFF2D3748),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Tindakan ini tidak dapat dibatalkan.',
+                    'Tindakan ini dapat diubah kembali nanti.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -619,7 +714,7 @@ class _AkunMandorState extends State<AkunMandor> {
               const SizedBox(width: 8),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: status ? const Color.fromRGBO(239, 68, 68, 1) : const Color.fromRGBO(36, 192, 72, 1),
+                  backgroundColor: status ? Colors.red : Colors.green,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
@@ -632,7 +727,10 @@ class _AkunMandorState extends State<AkunMandor> {
                 ),
                 child: Text(
                   status ? 'Nonaktifkan' : 'Aktifkan',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
                 onPressed: () async {
                   await _userController.toggleMandorStatus(id);
@@ -643,7 +741,10 @@ class _AkunMandorState extends State<AkunMandor> {
                   Navigator.pop(context);
                   ShowSnackbar.show(
                     context,
-                    status ? 'Akun "$nama" berhasil dinonaktifkan!' : 'Akun "$nama" berhasil diaktifkan!',
+                    status
+                        ? 'Akun "$nama" berhasil dinonaktifkan!'
+                        : 'Akun "$nama" berhasil diaktifkan!',
+                    true,
                   );
                 },
               ),

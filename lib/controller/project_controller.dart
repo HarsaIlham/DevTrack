@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:tracedev/models/project_model.dart';
 import 'package:tracedev/services/api_services.dart';
 import 'package:tracedev/services/cloudinary_service.dart';
@@ -11,6 +12,9 @@ class ProjectController extends ChangeNotifier {
 
   List<ProjectModel> _projects = [];
   List<ProjectModel> get projects => _projects;
+
+  Map<String, String> _projectLocation = {};
+  Map<String, String> get projectLocation => _projectLocation;
 
   ProjectModel? _project;
   ProjectModel? get project => _project;
@@ -50,6 +54,42 @@ class ProjectController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> getProjectLocation() async {
+    for (var project in projects) {
+      if (!_projectLocation.containsKey(project.lokasi)) {
+        String lokasi = await getCityFromStringCoords(project.lokasi);
+        _projectLocation[project.lokasi] = lokasi;
+      }
+    }
+  }
+
+  Future<String> getCityFromStringCoords(String koordinat) async {
+    try {
+      final parts = koordinat.split(',');
+      final lat = double.parse(parts[0].trim());
+      final lng = double.parse(parts[1].trim());
+
+      List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        final kecamatan = place.subLocality;
+        final kota = place.locality ?? place.subAdministrativeArea;
+        final provinsi = place.administrativeArea;
+
+        final parts = [
+          if (kecamatan != null && kecamatan.isNotEmpty) kecamatan,
+          if (kota != null && kota.isNotEmpty) kota,
+          if (provinsi != null && provinsi.isNotEmpty) provinsi,
+        ];
+        return parts.join(', ');
+      } else {
+        return "Tidak ditemukan";
+      }
+    } catch (e) {
+      return "Error: ${e.toString()}";
+    }
+  }
+
   Future<void> getAllProjects() async {
     print("[getAllProjects] Called");
 
@@ -81,6 +121,7 @@ class ProjectController extends ChangeNotifier {
 
     try {
       _project = await _apiServices.getProjectById(id);
+      print('[getProjectById] API call successful.');
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
@@ -125,7 +166,11 @@ class ProjectController extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateProject(int id, File? _selectedImage, String _imgUrlSekarang) async {
+  Future<bool> updateProject(
+    int id,
+    File? _selectedImage,
+    String _imgUrlSekarang,
+  ) async {
     _isLoading = true;
     _errorMessage = null;
     _isSuccess = false;

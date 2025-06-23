@@ -120,6 +120,7 @@ class UsersController extends ChangeNotifier {
     }
   }
 
+
   Future<void> getMandorById(int id) async {
     _isLoading = true;
     _errorMessage = null;
@@ -187,6 +188,9 @@ class UsersController extends ChangeNotifier {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       print('Error: $_errorMessage');
       return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }
