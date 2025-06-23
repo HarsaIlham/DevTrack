@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:tracedev/view/laporan_page_mandor.dart';
 import 'package:tracedev/view/profile_page_developer.dart';
 import 'package:tracedev/view/riwayat_proyek.dart';
-import 'package:tracedev/view/riwayat_proyek_page_mandor.dart';
 import 'project_list_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
